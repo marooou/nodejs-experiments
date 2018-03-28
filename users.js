@@ -1,5 +1,6 @@
 const express = require('express');
 const _ = require('lodash');
+const { body, validationResult } = require('express-validator/check');
 const router = express.Router();
 
 const users = [
@@ -7,15 +8,21 @@ const users = [
   {id: 2, firstName: 'Jerzy', secondName: 'Kwiatkowski', age: '25'}
 ];
 
-const response = (res, obj) => {
-  res.header(obj.header);
-  res.status(obj.status);
-  res.json(obj.json);
+const response = (res, status, json) => {
+  res.header('content-type', 'application/json');
+  res.status(status);
+  res.json(json);
 };
 
-const firstNameReg = /^[a-zA-Z]{3,}$/g;
-const secondNameReg = /^[a-zA-Z]{1,}$/g;
-const ageReg = /^[0-9]{1-2}$/g;
+const firstNameReg = /^[a-zA-Z]{3,}$/;
+const secondNameReg = /^[a-zA-Z]{1,}$/;
+const ageReg = /\d{2}/;
+
+const validationParams = [
+  body('firstName', 'Empty name. Only alphabetic letters.').matches(firstNameReg),
+  body('secondName', 'Empty surname. Only alphabetic letters.').matches(secondNameReg),
+  body('age', 'Age must contain 2 digits max.').matches(ageReg)
+];
 
 //GET requests
 router.get('/', (req, res) => {
@@ -30,44 +37,25 @@ router.get('/', (req, res) => {
     users, 
     _.pickBy(queryOptions, v => v) //since there is need to get only truthy properties from queryOptions object
   );
-  response(res, {
-    header: "'content-type', 'application/json'",
-    status: 200,
-    json: { users: filteredUsers }
-  });
+  response(res, 200, { users: filteredUsers });
 });
 
 router.get('/:id([0-9]{1,})', (req, res) => {
   const { id } = req.params;
   const selectedUser = _.find(users, (user) => user.id == id);
   if(selectedUser) {
-    response(res, {
-      header: "'content-type', 'application/json'",
-      status: 200,
-      json: selectedUser,
-    });
+    response(res, 200, selectedUser);
   } else {
-    response(res, {
-      header: "'content-type', 'application/json'",
-      status: 404,
-      json: { message: 'User was not found.' },
-    });
+    response(res, 404, { message: 'User was not found.' });
   }
 });
 
 //POST request
-router.post('/', (req, res) => {
+router.post('/', validationParams, (req, res) => {
   const { firstName, secondName, age } = req.body;
-  if(
-    !firstName.toString().match(firstNameReg) ||
-    !secondName.toString().match(secondNameReg) ||
-    !age.toString().match(ageReg)
-  ) {
-    response(res, {
-      header: "'content-type', 'application/json'",
-      status: 400,
-      json: { message: 'Please provide all required fields: firstName, secondName, age' },
-    });
+  const errors = validationResult(req);
+  if(!errors.isEmpty()) {
+    response(res, 400, { errors: errors.mapped() });
   } else {
     const newId = users[users.length-1].id+1;
     users.push({
@@ -76,29 +64,17 @@ router.post('/', (req, res) => {
       secondName,
       age
     });
-    res.location('http://localhost:3000/api/users/' + newId);
-    response(res, {
-      header: "'content-type', 'application/json'",
-      status: 201,
-      json: { message: 'New user created.', location: '/api/users/' + newId },
-    });
+    res.location(`http://localhost:3000/api/users/${newId}`);
+    response(res, 201, { message: 'New user created.', location: `/api/users/${newId}` });
   }
 });
 
 //PUT request
-router.put('/:id', (req, res) => {
+router.put('/:id', validationParams, (req, res) => {
   const { firstName, secondName, age } = req.body;
   const { id } = req.params;
-  if(
-    !firstName.toString().match(firstNameReg) ||
-    !secondName.toString().match(secondNameReg) ||
-    !age.toString().match(age)
-  ) {
-    response(res, {
-      header: "'content-type', 'application/json'",
-      status: 400,
-      json: { message: 'Please provide all required fields. Pattern: firstName: John, secondName: Smith, age: 32' }
-    });
+  if(!errors.isEmpty()) {
+    response(res, 400, { errors: errors.mapped() });
   } else {
     const selectedId = _.findIndex(users, (user) => user.id == id);
     const userObj = {
@@ -109,19 +85,11 @@ router.put('/:id', (req, res) => {
     };
     if(selectedId === -1) {
       users.push(userObj);
-      res.location('http://localhost:3000/api/users/' + id);
-      response(res, {
-        header: "'content-type', 'application/json'",
-        status: 201,
-        json: { message: 'New user created.', location: '/api/users/' + id },
-      });
+      res.location(`http://localhost:3000/api/users/${id}`);
+      response(res, 201, { message: 'New user created.', location: `/api/users/${id}` });
     } else {
       users[selectedId] = userObj;
-      response(res, {
-        header: "'content-type', 'application/json'",
-        status: 200,
-        json: { message: 'User id ' + id + ' updated.'},
-      });
+      response(res, 200, { message: `User id ${id} updated.` });
     }
   }
 });
