@@ -61,7 +61,7 @@ router.post('/', (req, res) => {
     response(res, {
       header: "'content-type', 'application/json'",
       status: 400,
-      json: { message: 'Bad Request' },
+      json: { message: 'Please provide all required fields: firstName, secondName, age' },
     });
   } else {
     const newId = users[users.length-1].id+1;
@@ -93,7 +93,7 @@ router.put('/:id', (req, res) => {
     response(res, {
       header: "'content-type', 'application/json'",
       status: 400,
-      json: { message: 'Bad Request' },
+      json: { message: 'Please provide all required fields: id, firstName, secondName, age' },
     });
   } else {
     const selectedId = _.findIndex(users, (user) => user.id == id);
