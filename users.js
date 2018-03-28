@@ -13,6 +13,10 @@ const response = (res, obj) => {
   res.json(obj.json);
 };
 
+const firstNameReg = /^[a-zA-Z]{3,}$/g;
+const secondNameReg = /^[a-zA-Z]{1,}$/g;
+const ageReg = /^[0-9]{1-2}$/g;
+
 //GET requests
 router.get('/', (req, res) => {
   const { id, firstName, secondName, age } = req.query;
@@ -34,12 +38,13 @@ router.get('/', (req, res) => {
 });
 
 router.get('/:id([0-9]{1,})', (req, res) => {
-  const currUser = _.find(users, [id, req.params.id]);
-  if(currUser.length == 1) {
+  const { id } = req.params;
+  const selectedUser = _.find(users, (user) => user.id == id);
+  if(selectedUser) {
     response(res, {
       header: "'content-type', 'application/json'",
       status: 200,
-      json: currUser[0],
+      json: selectedUser,
     });
   } else {
     response(res, {
@@ -54,9 +59,9 @@ router.get('/:id([0-9]{1,})', (req, res) => {
 router.post('/', (req, res) => {
   const { firstName, secondName, age } = req.body;
   if(
-    !firstName ||
-    !secondName ||
-    !age.toString().match(/^[0-9]{2}$/g)
+    !firstName.toString().match(firstNameReg) ||
+    !secondName.toString().match(secondNameReg) ||
+    !age.toString().match(ageReg)
   ) {
     response(res, {
       header: "'content-type', 'application/json'",
@@ -85,20 +90,19 @@ router.put('/:id', (req, res) => {
   const { firstName, secondName, age } = req.body;
   const { id } = req.params;
   if(
-    !firstName ||
-    !secondName ||
-    !age.toString().match(/^[0-9]{2}$/g) ||
-    !id.toString().match(/^[0-9]{1,}$/g)
+    !firstName.toString().match(firstNameReg) ||
+    !secondName.toString().match(secondNameReg) ||
+    !age.toString().match(age)
   ) {
     response(res, {
       header: "'content-type', 'application/json'",
       status: 400,
-      json: { message: 'Please provide all required fields: id, firstName, secondName, age' },
+      json: { message: 'Please provide all required fields. Pattern: firstName: John, secondName: Smith, age: 32' }
     });
   } else {
     const selectedId = _.findIndex(users, (user) => user.id == id);
     const userObj = {
-      id,
+      id: parseInt(id),
       firstName,
       secondName,
       age
